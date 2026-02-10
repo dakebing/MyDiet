@@ -13,7 +13,7 @@ import { useApp } from './context/AppContext'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isLoggedIn } = useApp()
-  if (!isLoggedIn) return <Navigate to="/login" replace />
+  if (!isLoggedIn) return <Navigate to="/landing" replace />
   return <>{children}</>
 }
 
