@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+:root {
+  --color-green: #4ADE80;
+  --color-cyan: #22D3EE;
+  --color-orange: #F97316;
+  --color-pink: #F472B6;
+  --color-purple: #818CF8;
+  --color-gold: #FBBF24;
+  --color-bg-start: #0F0C29;
+  --color-bg-mid: #302B63;
+  --color-bg-end: #24243E;
+  --color-glass: rgba(255, 255, 255, 0.07);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-glass-hover: rgba(255, 255, 255, 0.12);
+  --color-text: #FFFFFFEE;
+  --color-text-muted: rgba(255, 255, 255, 0.5);
+  --color-text-secondary: rgba(255, 255, 255, 0.7);
+}
+
+@layer base {
+  html, body {
+    height: 100%;
+  }
+
+  .font-outfit {
+    font-family: "Outfit", sans-serif;
+  }
+}
+
+body {
+  font-family: "Outfit", sans-serif;
+  background: linear-gradient(135deg, #0F0C29 0%, #302B63 50%, #24243E 100%);
+  color: rgba(255, 255, 255, 0.93);
+  min-height: 100vh;
+}
+
+/* Glass card */
+.glass {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Progress ring animation */
+@keyframes progress-fill {
+  from { stroke-dashoffset: var(--circumference); }
+  to { stroke-dashoffset: var(--offset); }
+}
+
+/* Flame pulse */
+@keyframes flame-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.animate-flame {
+  animation: flame-pulse 0.6s ease-in-out;
+}
+
+/* Heart pop */
+@keyframes heart-pop {
+  0% { transform: scale(0); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+.animate-heart {
+  animation: heart-pop 0.8s ease-out forwards;
+}
