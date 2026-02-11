@@ -4,6 +4,21 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
+// Get this week's dates (Mon-Sun)
+function getWeekDates(): Date[] {
+  const today = new Date()
+  const dayOfWeek = today.getDay()
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d
+  })
+}
+
+const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
 export default function PlanDayDetail() {
   const { day } = useParams<{ day: string }>()
   const navigate = useNavigate()
@@ -11,6 +26,12 @@ export default function PlanDayDetail() {
 
   const dayPlan = weeklyPlan.find(d => d.day.toLowerCase() === day?.toLowerCase())
   if (!dayPlan) return <div className="text-white/50">Day not found</div>
+
+  // Compute the date for this day of the week
+  const weekDates = getWeekDates()
+  const dayIndex = dayNames.findIndex(d => d.toLowerCase() === day?.toLowerCase())
+  const dayDate = dayIndex >= 0 ? weekDates[dayIndex] : null
+  const dateLabel = dayDate ? `${dayDate.getMonth() + 1}.${dayDate.getDate()}` : ''
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -21,7 +42,10 @@ export default function PlanDayDetail() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-[24px] font-bold text-white">{dayPlan.day} Detail</h1>
+          <h1 className="text-[24px] font-bold text-white">
+            {dayPlan.day} Detail{' '}
+            {dateLabel && <span className="text-[16px] font-normal text-white/40">({dateLabel})</span>}
+          </h1>
           <p className="text-[14px] text-white/50">View and customize your meals</p>
         </div>
       </div>

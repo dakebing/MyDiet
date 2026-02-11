@@ -24,9 +24,15 @@ interface DailyRecord {
   extraMeals: ExtraMeal[]
 }
 
-function getDateKey(date: number): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${now.getMonth()}-${date}`
+function getDateKey(year: number, month: number, day: number): string {
+  return `${year}-${month}-${day}`
+}
+
+// Get day-of-week name from a full date
+function getDayName(year: number, month: number, day: number): string {
+  const date = new Date(year, month, day)
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  return days[date.getDay()]
 }
 
 // Empty nutrition (0 consumed) for fresh dates
@@ -43,12 +49,13 @@ function makeFreshMeals(): DayMeals {
   return JSON.parse(JSON.stringify(todayMeals))
 }
 
-function makeDefaultRecord(): DailyRecord {
-  return {
-    nutrition: makeEmptyNutrition(),
-    meals: makeFreshMeals(),
-    extraMeals: [],
+// Create default record with meals from weekly plan based on day of week
+function makeMealsFromPlan(planData: DayPlan[], dayName: string): DayMeals {
+  const dayPlan = planData.find(d => d.day === dayName)
+  if (dayPlan) {
+    return JSON.parse(JSON.stringify(dayPlan.meals))
   }
+  return makeFreshMeals()
 }
 
 interface AppContextType {
@@ -61,6 +68,8 @@ interface AppContextType {
   planCompleted: boolean
   unit: 'metric' | 'imperial'
   selectedDate: number
+  selectedMonth: number
+  selectedYear: number
   isToday: boolean
   isLoggedIn: boolean
   // Community state
@@ -74,6 +83,7 @@ interface AppContextType {
   resetPlan: () => void
   setUnit: (u: 'metric' | 'imperial') => void
   setSelectedDate: (d: number) => void
+  setFullDate: (year: number, month: number, day: number) => void
   resetToToday: () => void
   addNutrition: (cal: number, p: number, c: number, f: number) => void
   swapMeal: (day: string, mealType: 'breakfast' | 'lunch' | 'dinner') => void
@@ -82,12 +92,14 @@ interface AppContextType {
   extraMeals: ExtraMeal[]
   addExtraMeals: (meals: ExtraMeal[]) => void
   removeExtraMeal: (mealId: string) => void
+  removeAllExtraMeals: () => void
   // Community
   addComment: (postId: string, comment: Comment) => void
   deleteComment: (postId: string, commentId: string) => void
   addReplyToComment: (postId: string, commentId: string, reply: Comment) => void
   updatePostComments: (postId: string, comments: Comment[]) => void
   refreshPosts: () => void
+  togglePostLike: (postId: string) => void
   // Auth
   signIn: () => void
   signUp: (name: string, email: string) => void
@@ -116,6 +128,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [planCompleted, setPlanCompleted] = useState(() => loadState('mydiet_plan_done', false))
   const [unit, setUnitState] = useState<'metric' | 'imperial'>(() => loadState('mydiet_unit', 'metric'))
   const [selectedDate, setSelectedDateState] = useState(new Date().getDate())
+  const [selectedMonth, setSelectedMonthState] = useState(new Date().getMonth())
+  const [selectedYear, setSelectedYearState] = useState(new Date().getFullYear())
 
   // Per-date records
   const [dailyRecords, setDailyRecords] = useState<Record<string, DailyRecord>>(() =>
@@ -126,14 +140,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [posts, setPostsState] = useState<Post[]>(() => loadState('mydiet_posts', communityPosts))
   const [trendingPostsList, setTrendingPostsState] = useState<Post[]>(() => loadState('mydiet_tposts', trendingPosts))
 
-  // Get current day's record (create default if not exist)
-  const currentKey = getDateKey(selectedDate)
-  const currentRecord = dailyRecords[currentKey] || makeDefaultRecord()
-  const isToday = selectedDate === new Date().getDate()
+  // Get current day's record — ALWAYS sync meal definitions from weekly plan
+  const currentKey = getDateKey(selectedYear, selectedMonth, selectedDate)
+  const dayName = getDayName(selectedYear, selectedMonth, selectedDate)
+  const planMeals = makeMealsFromPlan(plan, dayName)
+  const storedRecord = dailyRecords[currentKey]
+
+  // Always use the plan's meal definitions, but preserve checked state from stored record
+  const currentRecord: DailyRecord = storedRecord
+    ? {
+        ...storedRecord,
+        meals: {
+          breakfast: { ...planMeals.breakfast, checked: storedRecord.meals.breakfast?.checked ?? false },
+          lunch: { ...planMeals.lunch, checked: storedRecord.meals.lunch?.checked ?? false },
+          dinner: { ...planMeals.dinner, checked: storedRecord.meals.dinner?.checked ?? false },
+        },
+      }
+    : { nutrition: makeEmptyNutrition(), meals: planMeals, extraMeals: [] }
+
+  const now = new Date()
+  const isToday = selectedDate === now.getDate() && selectedMonth === now.getMonth() && selectedYear === now.getFullYear()
 
   const updateDailyRecord = useCallback((dateKey: string, updater: (prev: DailyRecord) => DailyRecord) => {
     setDailyRecords(prev => {
-      const existing = prev[dateKey] || makeDefaultRecord()
+      const existing = prev[dateKey] || { nutrition: makeEmptyNutrition(), meals: makeFreshMeals(), extraMeals: [] }
       const updated = { ...prev, [dateKey]: updater(existing) }
       saveState('mydiet_daily', updated)
       return updated
@@ -154,7 +184,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const toggleMealCheck = useCallback((mealType: 'breakfast' | 'lunch' | 'dinner') => {
-    const dateKey = getDateKey(selectedDate)
+    const dateKey = getDateKey(selectedYear, selectedMonth, selectedDate)
     updateDailyRecord(dateKey, (record) => {
       const meal = record.meals[mealType]
       const wasChecked = meal.checked
@@ -171,7 +201,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       return { ...record, nutrition: newNutrition, meals: newMeals }
     })
-  }, [selectedDate, updateDailyRecord])
+  }, [selectedYear, selectedMonth, selectedDate, updateDailyRecord])
 
   const incrementStreak = useCallback(() => {
     if (!streakCheckedToday) {
@@ -204,13 +234,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSelectedDateState(d)
   }, [])
 
+  const setFullDate = useCallback((year: number, month: number, day: number) => {
+    setSelectedYearState(year)
+    setSelectedMonthState(month)
+    setSelectedDateState(day)
+  }, [])
+
   // Bug 2: reset to today when navigating back
   const resetToToday = useCallback(() => {
-    setSelectedDateState(new Date().getDate())
+    const n = new Date()
+    setSelectedYearState(n.getFullYear())
+    setSelectedMonthState(n.getMonth())
+    setSelectedDateState(n.getDate())
   }, [])
 
   const addNutrition = useCallback((cal: number, p: number, c: number, f: number) => {
-    const dateKey = getDateKey(selectedDate)
+    const dateKey = getDateKey(selectedYear, selectedMonth, selectedDate)
     updateDailyRecord(dateKey, (record) => ({
       ...record,
       nutrition: {
@@ -221,15 +260,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         fats: { ...record.nutrition.fats, current: record.nutrition.fats.current + f },
       },
     }))
-  }, [selectedDate, updateDailyRecord])
+  }, [selectedYear, selectedMonth, selectedDate, updateDailyRecord])
 
   const swapMeal = useCallback((day: string, mealType: 'breakfast' | 'lunch' | 'dinner') => {
     setPlan(prev => {
       const updated = prev.map(d => {
         if (d.day.toLowerCase() !== day.toLowerCase()) return d
         const alts = d.alternatives[mealType]
-        if (alts.length === 0) return d
-        const randomAlt = alts[Math.floor(Math.random() * alts.length)]
+        const currentMeal = d.meals[mealType]
+        // Exclude current meal so we always pick a different one
+        const otherAlts = alts.filter(a => a.id !== currentMeal.id)
+        if (otherAlts.length === 0) return d
+        const randomAlt = otherAlts[Math.floor(Math.random() * otherAlts.length)]
         return {
           ...d,
           meals: { ...d.meals, [mealType]: { ...randomAlt, checked: false } },
@@ -259,7 +301,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Add extra meals (from Identifier)
   const addExtraMeals = useCallback((meals: ExtraMeal[]) => {
-    const dateKey = getDateKey(new Date().getDate())
+    const n = new Date()
+    const dateKey = getDateKey(n.getFullYear(), n.getMonth(), n.getDate())
     updateDailyRecord(dateKey, (record) => ({
       ...record,
       extraMeals: [...(record.extraMeals || []), ...meals],
@@ -268,7 +311,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Remove a single extra meal and subtract its nutrition
   const removeExtraMeal = useCallback((mealId: string) => {
-    const dateKey = getDateKey(selectedDate)
+    const dateKey = getDateKey(selectedYear, selectedMonth, selectedDate)
     updateDailyRecord(dateKey, (record) => {
       const meal = (record.extraMeals || []).find(m => m.id === mealId)
       if (!meal) return record
@@ -285,7 +328,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
         },
       }
     })
-  }, [selectedDate, updateDailyRecord])
+  }, [selectedYear, selectedMonth, selectedDate, updateDailyRecord])
+
+  // Remove all extra meals for current date and subtract their nutrition
+  const removeAllExtraMeals = useCallback(() => {
+    const dateKey = getDateKey(selectedYear, selectedMonth, selectedDate)
+    updateDailyRecord(dateKey, (record) => {
+      const extra = record.extraMeals || []
+      if (extra.length === 0) return record
+      const totalCal = extra.reduce((s, m) => s + m.calories, 0)
+      const totalP = extra.reduce((s, m) => s + m.protein, 0)
+      const totalC = extra.reduce((s, m) => s + m.carbs, 0)
+      const totalF = extra.reduce((s, m) => s + m.fats, 0)
+      return {
+        ...record,
+        extraMeals: [],
+        nutrition: {
+          ...record.nutrition,
+          calories: { ...record.nutrition.calories, current: Math.max(0, record.nutrition.calories.current - totalCal) },
+          protein: { ...record.nutrition.protein, current: Math.max(0, record.nutrition.protein.current - totalP) },
+          carbs: { ...record.nutrition.carbs, current: Math.max(0, record.nutrition.carbs.current - totalC) },
+          fats: { ...record.nutrition.fats, current: Math.max(0, record.nutrition.fats.current - totalF) },
+        },
+      }
+    })
+  }, [selectedYear, selectedMonth, selectedDate, updateDailyRecord])
 
   // Bug 6: prepend new comment so it appears at the top
   const addComment = useCallback((postId: string, comment: Comment) => {
@@ -355,6 +422,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
     setTrendingPostsState(prev => {
       const updated = prev.map(p => p.id === postId ? { ...p, comments } : p)
+      saveState('mydiet_tposts', updated)
+      return updated
+    })
+  }, [])
+
+  // Toggle post like and persist so it survives reload
+  const togglePostLike = useCallback((postId: string) => {
+    const updater = (p: Post) => {
+      if (p.id !== postId) return p
+      const wasLiked = p.liked
+      return { ...p, liked: !wasLiked, likes: wasLiked ? p.likes - 1 : p.likes + 1 }
+    }
+    setPostsState(prev => {
+      const updated = prev.map(updater)
+      saveState('mydiet_posts', updated)
+      return updated
+    })
+    setTrendingPostsState(prev => {
+      const updated = prev.map(updater)
       saveState('mydiet_tposts', updated)
       return updated
     })
@@ -458,13 +544,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       user, nutrition: currentRecord.nutrition, streak, streakCheckedToday,
       meals: currentRecord.meals, weeklyPlan: plan,
-      planCompleted, unit, selectedDate, isToday, isLoggedIn,
+      planCompleted, unit, selectedDate, selectedMonth, selectedYear, isToday, isLoggedIn,
       posts, trendingPostsList,
       extraMeals: currentRecord.extraMeals || [],
       setUser, updateWeight, toggleMealCheck, incrementStreak,
-      completePlan, resetPlan, setUnit, setSelectedDate, resetToToday,
-      addNutrition, swapMeal, selectMealAlternative, addExtraMeals, removeExtraMeal,
-      addComment, deleteComment, addReplyToComment, updatePostComments, refreshPosts,
+      completePlan, resetPlan, setUnit, setSelectedDate, setFullDate, resetToToday,
+      addNutrition, swapMeal, selectMealAlternative, addExtraMeals, removeExtraMeal, removeAllExtraMeals,
+      addComment, deleteComment, addReplyToComment, updatePostComments, refreshPosts, togglePostLike,
       signIn, signUp, signOut,
     }}>
       {children}

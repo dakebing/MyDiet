@@ -74,22 +74,17 @@ function CommentItem({ comment, postId, depth = 0, onReplyTo }: {
 
 // ==================== Post Modal (4-2) ====================
 function PostModal({ postId, onClose }: { postId: string; onClose: () => void }) {
-  const { posts, trendingPostsList, addComment, addReplyToComment } = useApp()
+  const { posts, trendingPostsList, addComment, addReplyToComment, togglePostLike } = useApp()
   const [commentText, setCommentText] = useState('')
   const [replyTarget, setReplyTarget] = useState<{ commentId: string; author: string } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Always read fresh post data from context so new comments show immediately
+  // Always read fresh post data from context so new comments and like state show
   const post = [...posts, ...trendingPostsList].find(p => p.id === postId)
-  const [liked, setLiked] = useState(post?.liked ?? false)
-  const [likeCount, setLikeCount] = useState(post?.likes ?? 0)
 
   if (!post) return null
 
-  const handleLike = () => {
-    setLiked(!liked)
-    setLikeCount(c => liked ? c - 1 : c + 1)
-  }
+  const handleLike = () => togglePostLike(post.id)
 
   // Count all comments (including nested replies)
   const countComments = (comments: Comment[]): number => {
@@ -191,8 +186,8 @@ function PostModal({ postId, onClose }: { postId: string; onClose: () => void })
           <div className="border-t border-white/10 p-4">
             <div className="mb-3 flex items-center gap-4">
               <button onClick={handleLike} className="flex items-center gap-1.5 text-[13px]">
-                <Heart className={`h-5 w-5 ${liked ? 'fill-[#F472B6] text-[#F472B6]' : 'text-white/50'}`} />
-                <span className="text-white/60">{likeCount.toLocaleString()}</span>
+                <Heart className={`h-5 w-5 ${post.liked ? 'fill-[#F472B6] text-[#F472B6]' : 'text-white/50'}`} />
+                <span className="text-white/60">{post.likes.toLocaleString()}</span>
               </button>
               <button onClick={focusComment} className="flex items-center gap-1.5 text-[13px] text-white/50">
                 <MessageCircle className="h-5 w-5" /> Comment
@@ -237,14 +232,12 @@ function PostModal({ postId, onClose }: { postId: string; onClose: () => void })
 
 // ==================== Post Card ====================
 function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
-  const [liked, setLiked] = useState(post.liked)
-  const [likeCount, setLikeCount] = useState(post.likes)
+  const { togglePostLike } = useApp()
   const [showHeart, setShowHeart] = useState(false)
 
   const handleDoubleClick = () => {
-    if (!liked) {
-      setLiked(true)
-      setLikeCount(c => c + 1)
+    if (!post.liked) {
+      togglePostLike(post.id)
       setShowHeart(true)
       setTimeout(() => setShowHeart(false), 800)
     }
@@ -277,8 +270,8 @@ function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
             <span className="text-[11px] text-white/50">{post.author}</span>
           </div>
           <div className="flex items-center gap-1">
-            <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-[#F472B6] text-[#F472B6]' : 'text-white/40'}`} />
-            <span className="text-[11px] text-white/50">{likeCount >= 1000 ? `${(likeCount/1000).toFixed(1)}k` : likeCount}</span>
+            <Heart className={`h-3.5 w-3.5 ${post.liked ? 'fill-[#F472B6] text-[#F472B6]' : 'text-white/40'}`} />
+            <span className="text-[11px] text-white/50">{post.likes >= 1000 ? `${(post.likes/1000).toFixed(1)}k` : post.likes}</span>
           </div>
         </div>
       </div>
@@ -288,11 +281,32 @@ function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
 
 // ==================== Trending Post Card ====================
 function TrendingPostCard({ post, onClick }: { post: Post; onClick: () => void }) {
+  const { togglePostLike } = useApp()
+  const [showHeart, setShowHeart] = useState(false)
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!post.liked) {
+      togglePostLike(post.id)
+      setShowHeart(true)
+      setTimeout(() => setShowHeart(false), 800)
+    }
+  }
+
   return (
     <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
       className="glass group cursor-pointer overflow-hidden rounded-2xl transition-all hover:bg-white/10"
-      onClick={onClick}>
-      <img src={post.image} alt={post.title} className="w-full object-cover" />
+      onClick={onClick} onDoubleClick={handleDoubleClick}>
+      <div className="relative">
+        <img src={post.image} alt={post.title} className="w-full object-cover" />
+        <AnimatePresence>
+          {showHeart && (
+            <motion.div className="animate-heart absolute inset-0 flex items-center justify-center">
+              <Heart className="h-16 w-16 fill-[#F472B6] text-[#F472B6]" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       <div className="p-4">
         <p className="mb-2 line-clamp-2 text-[13px] font-semibold leading-snug text-white">{post.title}</p>
         <div className="mb-2 flex flex-wrap gap-1.5">
@@ -309,7 +323,7 @@ function TrendingPostCard({ post, onClick }: { post: Post; onClick: () => void }
             <span className="text-[11px] text-white/50">{post.author}</span>
           </div>
           <div className="flex items-center gap-1">
-            <Heart className="h-3.5 w-3.5 text-[#F472B6]" />
+            <Heart className={`h-3.5 w-3.5 ${post.liked ? 'fill-[#F472B6] text-[#F472B6]' : 'text-white/40'}`} />
             <span className="text-[11px] text-white/50">{post.likes >= 1000 ? `${(post.likes/1000).toFixed(1)}k` : post.likes}</span>
           </div>
         </div>

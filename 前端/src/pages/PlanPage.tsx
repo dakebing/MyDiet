@@ -1,8 +1,25 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { RefreshCw, ChevronRight, Pencil, RotateCcw, X, Check } from 'lucide-react'
+import { ChevronRight, Pencil, RotateCcw, X, Check, Activity } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+
+// ==================== Week Date Helpers ====================
+function getWeekDates(): Date[] {
+  const today = new Date()
+  const dayOfWeek = today.getDay() // 0=Sun, 1=Mon, ...
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d
+  })
+}
+
+function formatShortDate(d: Date): string {
+  return `${d.getMonth() + 1}.${d.getDate()}`
+}
 
 // ==================== Questionnaire (2-1) ====================
 function PlanQuestionnaire() {
@@ -189,9 +206,9 @@ function EditModal({ title, onClose, children }: { title: string; onClose: () =>
 
 // ==================== Dashboard (2-2) ====================
 function PlanDashboard() {
-  const { user, setUser, updateWeight, weeklyPlan, swapMeal, resetPlan } = useApp()
+  const { user, setUser, updateWeight, weeklyPlan, resetPlan } = useApp()
   const navigate = useNavigate()
-  const [refreshKey, setRefreshKey] = useState(0)
+  const weekDates = getWeekDates()
 
   // Bug 4: Edit modal states
   const [editStats, setEditStats] = useState(false)
@@ -205,11 +222,6 @@ function PlanDashboard() {
     allergies: user.allergies.join(', '),
     restrictions: user.restrictions.join(', '),
   })
-
-  const handleSwapDay = (day: string, mealType: 'breakfast' | 'lunch' | 'dinner') => {
-    swapMeal(day, mealType)
-    setRefreshKey(k => k + 1)
-  }
 
   const saveStats = () => {
     const bmi = +(statsForm.weight / ((statsForm.height / 100) ** 2)).toFixed(1)
@@ -299,6 +311,43 @@ function PlanDashboard() {
           </div>
         </div>
 
+        {/* Activity Level */}
+        <div className="glass space-y-3 rounded-2xl p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[15px] font-bold text-white">Activity Level</h3>
+            <Activity className="h-4 w-4 text-[#22D3EE]" />
+          </div>
+          <div className="space-y-2">
+            <div className="flex gap-1">
+              {(['Sedentary', 'Light', 'Moderate', 'Active', 'Very Active'] as const).map((level, i) => {
+                const levels = ['Sedentary', 'Light', 'Moderate', 'Active', 'Very Active']
+                const currentIdx = levels.indexOf(user.activityLevel)
+                const isActive = i <= currentIdx
+                return (
+                  <button key={level}
+                    onClick={() => setUser({ ...user, activityLevel: level })}
+                    className="group relative flex-1"
+                    title={level}>
+                    <div className={`h-3 rounded-full transition-all ${
+                      isActive
+                        ? 'bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] shadow-[0_0_8px_rgba(74,222,128,0.3)]'
+                        : 'bg-white/10 hover:bg-white/15'
+                    }`} />
+                    <div className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#1a1a2e] px-2 py-1 text-[10px] text-white/70 opacity-0 shadow-lg transition group-hover:opacity-100">
+                      {level}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex justify-between text-[10px] text-white/30">
+              <span>Sedentary</span>
+              <span>Very Active</span>
+            </div>
+            <p className="text-center text-[14px] font-semibold text-[#4ADE80]">{user.activityLevel || 'Not set'}</p>
+          </div>
+        </div>
+
         {/* Refactor */}
         <button onClick={() => resetPlan()}
           className="glass group flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[13px] font-semibold text-[#F97316] transition-all duration-200 hover:scale-[1.03] hover:bg-white/10 hover:shadow-[0_0_16px_rgba(249,115,22,0.2)]">
@@ -308,29 +357,35 @@ function PlanDashboard() {
 
       {/* Main Area */}
       <div className="flex-1 space-y-5">
-        <h2 className="text-[20px] font-bold text-white">Weekly Meal Plan</h2>
+        <h2 className="text-[20px] font-bold text-white">
+          Weekly Meal Plan{' '}
+          <span className="text-[14px] font-normal text-white/40">
+            ({formatShortDate(weekDates[0])} - {formatShortDate(weekDates[6])})
+          </span>
+        </h2>
 
-        <motion.div key={refreshKey} className="space-y-4"
+        <motion.div className="space-y-4"
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          {weeklyPlan.map((day) => (
+          {weeklyPlan.map((day, index) => (
             <div key={day.day} className="glass cursor-pointer rounded-2xl p-5 transition-all hover:bg-white/10"
               onClick={() => navigate(`/plan/day/${day.day.toLowerCase()}`)}>
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-[16px] font-bold text-white">{day.day}</h3>
+                <h3 className="text-[16px] font-bold text-white">
+                  {day.day}{' '}
+                  <span className="text-[13px] font-normal text-white/40">
+                    {formatShortDate(weekDates[index])}
+                  </span>
+                </h3>
                 <ChevronRight className="h-4 w-4 text-white/40" />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {(['breakfast', 'lunch', 'dinner'] as const).map((mt) => {
                   const meal = day.meals[mt]
                   return (
-                    <div key={mt} className="group relative rounded-xl bg-white/5 p-3">
+                    <div key={mt} className="rounded-xl bg-white/5 p-3">
                       <img src={meal.image} alt={meal.name} className="mb-2 h-24 w-full rounded-lg object-cover" />
                       <p className="truncate text-[12px] font-medium text-white">{meal.name}</p>
                       <p className="text-[11px] text-white/40">{meal.calories} kcal</p>
-                      <button onClick={(e) => { e.stopPropagation(); handleSwapDay(day.day, mt) }}
-                        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/60 opacity-0 transition group-hover:opacity-100">
-                        <RefreshCw className="h-3 w-3" />
-                      </button>
                     </div>
                   )
                 })}
