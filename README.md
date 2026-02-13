@@ -1,7 +1,7 @@
 # 🥗 MyDiet — 智能个性化饮食管理系统
 
 <p align="center">
-  <img src="前端/public/vite.svg" alt="MyDiet Logo" width="60" />
+  <img src="2. 前端/public/vite.svg" alt="MyDiet Logo" width="60" />
 </p>
 
 <p align="center">
