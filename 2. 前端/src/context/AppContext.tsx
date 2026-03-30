@@ -495,8 +495,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('mydiet_plan')
     localStorage.removeItem('mydiet_plan_done')
     localStorage.removeItem('mydiet_unit')
-    localStorage.removeItem('mydiet_posts')
-    localStorage.removeItem('mydiet_tposts')
 
     // Reset user to a fresh profile with the new name
     const freshUser: UserProfile = {
@@ -533,10 +531,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveState('mydiet_plan_done', false)
     setPlan(weeklyPlan)
     saveState('mydiet_plan', weeklyPlan)
-    setPostsState(communityPosts)
-    saveState('mydiet_posts', communityPosts)
-    setTrendingPostsState(trendingPosts)
-    saveState('mydiet_tposts', trendingPosts)
     setUnitState('metric')
     saveState('mydiet_unit', 'metric')
 
