@@ -94,6 +94,9 @@ interface AppContextType {
   removeExtraMeal: (mealId: string) => void
   removeAllExtraMeals: () => void
   // Community
+  toggleFollow: (username: string) => void; 
+  addPost: (post: Post) => void; 
+  addComment: (postId: string, comment: Comment) => void
   addComment: (postId: string, comment: Comment) => void
   deleteComment: (postId: string, commentId: string) => void
   addReplyToComment: (postId: string, commentId: string, reply: Comment) => void
@@ -354,6 +357,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [selectedYear, selectedMonth, selectedDate, updateDailyRecord])
 
+// Add: Create a new post
+  const addPost = useCallback((post: Post) => {
+    setPostsState(prev => {
+      // Insert the new post at the beginning of the list
+      const updated = [post, ...prev]
+      saveState('mydiet_posts', updated)
+      return updated
+    })
+  }, [])
+
+  // Add: Toggle follow status for a user
+  const toggleFollow = useCallback((targetUsername: string) => {
+    setUserState(prev => {
+      const currentList = prev.followingList || []
+      const isFollowing = currentList.includes(targetUsername)
+      
+      // If already following, remove them; otherwise, add them to the list
+      const newList = isFollowing
+        ? currentList.filter(name => name !== targetUsername)
+        : [...currentList, targetUsername]
+
+      const updated = {
+        ...prev,
+        followingList: newList,
+        following: newList.length // Sync the following count
+      }
+      saveState('mydiet_user', updated)
+      return updated
+    })
+  }, [])
+
   // Bug 6: prepend new comment so it appears at the top
   const addComment = useCallback((postId: string, comment: Comment) => {
     setPostsState(prev => {
@@ -483,8 +517,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('mydiet_plan')
     localStorage.removeItem('mydiet_plan_done')
     localStorage.removeItem('mydiet_unit')
-    localStorage.removeItem('mydiet_posts')
-    localStorage.removeItem('mydiet_tposts')
 
     // Reset user to a fresh profile with the new name
     const freshUser: UserProfile = {
@@ -521,10 +553,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveState('mydiet_plan_done', false)
     setPlan(weeklyPlan)
     saveState('mydiet_plan', weeklyPlan)
-    setPostsState(communityPosts)
-    saveState('mydiet_posts', communityPosts)
-    setTrendingPostsState(trendingPosts)
-    saveState('mydiet_tposts', trendingPosts)
     setUnitState('metric')
     saveState('mydiet_unit', 'metric')
 
@@ -550,6 +578,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser, updateWeight, toggleMealCheck, incrementStreak,
       completePlan, resetPlan, setUnit, setSelectedDate, setFullDate, resetToToday,
       addNutrition, swapMeal, selectMealAlternative, addExtraMeals, removeExtraMeal, removeAllExtraMeals,
+      addPost,
+      toggleFollow,
       addComment, deleteComment, addReplyToComment, updatePostComments, refreshPosts, togglePostLike,
       signIn, signUp, signOut,
     }}>

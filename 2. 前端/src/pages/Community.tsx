@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, MessageCircle, Send, X, Search, RefreshCw, Plus, TrendingUp, Clock, Trophy, Trash2, CornerDownRight } from 'lucide-react'
 import { trendingTags, topContributors, type Post, type Comment } from '../data/mockData'
 import { useApp } from '../context/AppContext'
+import { useNavigate } from 'react-router-dom' // New import
 
 // ==================== Nested Comment Item (Bug 6: 楼中楼) ====================
 function CommentItem({ comment, postId, depth = 0, onReplyTo }: {
@@ -11,6 +12,7 @@ function CommentItem({ comment, postId, depth = 0, onReplyTo }: {
   depth?: number
   onReplyTo: (commentId: string, author: string) => void
 }) {
+  const navigate = useNavigate()
   const { deleteComment, updatePostComments, posts, trendingPostsList } = useApp()
   const [liked, setLiked] = useState(false)
   const displayLikes = liked ? comment.likes + 1 : comment.likes
@@ -27,10 +29,21 @@ function CommentItem({ comment, postId, depth = 0, onReplyTo }: {
   return (
     <div className={`${depth > 0 ? 'ml-6 border-l border-white/10 pl-4' : ''}`}>
       <div className="flex gap-3 py-2">
-        <div className={`h-7 w-7 shrink-0 rounded-full bg-gradient-to-br ${comment.avatarGradient}`} />
+        {/* Clickable Avatar */}
+        <div 
+          onClick={() => navigate(`/profile/${encodeURIComponent(comment.author)}`)}
+          className={`h-7 w-7 shrink-0 cursor-pointer rounded-full bg-gradient-to-br ${comment.avatarGradient} transition hover:opacity-80`} 
+          title={`Visit ${comment.author}'s profile`}
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold text-white">{comment.author}</span>
+            {/* Clickable Name */}
+            <span 
+              onClick={() => navigate(`/profile/${encodeURIComponent(comment.author)}`)}
+              className="cursor-pointer text-[13px] font-semibold text-white transition hover:text-[#4ADE80]"
+            >
+              {comment.author}
+            </span>
             <span className="text-[11px] text-white/30">{comment.time}</span>
             {isOwn && (
               <button onClick={handleDelete}
@@ -72,8 +85,127 @@ function CommentItem({ comment, postId, depth = 0, onReplyTo }: {
   )
 }
 
+// ==================== Create Post Modal ====================
+function CreatePostModal({ onClose }: { onClose: () => void }) {
+  const { addPost, user } = useApp()
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [tags, setTags] = useState('')
+  const [imagePreview, setImagePreview] = useState<string | null>(null) // Store image Base64 data
+
+  // Handle local image upload and convert to Base64
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        // Once read, save the result to state for preview and posting
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleSubmit = () => {
+    if (!title.trim() || !content.trim()) return
+
+    // Process tags, ensure they start with #
+    const formattedTags = tags
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean)
+      .map(t => (t.startsWith('#') ? t : `#${t}`))
+
+    const newPost: Post = {
+      id: `new-post-${Date.now()}`,
+      title,
+      content,
+      // Use Base64 data if user uploaded an image, otherwise use default placeholder
+      image: imagePreview || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop', 
+      author: user.name || 'You',
+      avatarGradient: 'from-[#4ADE80] to-[#22D3EE]',
+      likes: 0,
+      liked: false,
+      tags: formattedTags.length > 0 ? formattedTags : ['#HealthyEating'],
+      comments: []
+    }
+
+    addPost(newPost)
+    onClose()
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-8"
+      onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-[#1a1a2e] shadow-2xl">
+        
+        <div className="border-b border-white/10 p-5">
+          <h3 className="text-[18px] font-bold text-white">Create New Post</h3>
+        </div>
+
+        <div className="space-y-4 p-5">
+          <div>
+            <label className="mb-1.5 block text-[13px] text-white/60">Title</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="What's on your mind?"
+              className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-[13px] text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-[#4ADE80]/50" />
+          </div>
+          
+          <div>
+            <label className="mb-1.5 block text-[13px] text-white/60">Content</label>
+            <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Share your recipe or progress..." rows={4}
+              className="w-full resize-none rounded-xl bg-white/5 px-4 py-2.5 text-[13px] text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-[#4ADE80]/50" />
+          </div>
+
+          {/* Local image upload component */}
+          <div>
+            <label className="mb-1.5 block text-[13px] text-white/60">Photo (Optional)</label>
+            <div className="flex items-center gap-4">
+              <label className="flex cursor-pointer items-center justify-center rounded-xl bg-white/5 px-4 py-2.5 text-[13px] text-white transition hover:bg-white/10 ring-1 ring-white/10">
+                <span>Choose File</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              </label>
+              
+              {/* Image preview area */}
+              {imagePreview && (
+                <div className="relative h-12 w-12 overflow-hidden rounded-lg ring-1 ring-white/20">
+                  <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                  <button onClick={() => setImagePreview(null)}
+                    className="absolute right-0 top-0 flex h-5 w-5 items-center justify-center bg-black/60 text-white/80 transition hover:bg-black hover:text-white"
+                    title="Remove image">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[13px] text-white/60">Tags (comma separated)</label>
+            <input value={tags} onChange={e => setTags(e.target.value)} placeholder="Healthy, MealPrep, Keto..."
+              className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-[13px] text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-[#4ADE80]/50" />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-white/10 p-4">
+          <button onClick={onClose} className="rounded-xl px-4 py-2 text-[13px] text-white/60 transition hover:bg-white/5 hover:text-white">Cancel</button>
+          <button onClick={handleSubmit} disabled={!title.trim() || !content.trim()}
+            className="rounded-xl bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] px-6 py-2 text-[13px] font-bold text-[#1a1a2e] transition hover:opacity-90 disabled:opacity-50">
+            Post
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // ==================== Post Modal (4-2) ====================
 function PostModal({ postId, onClose }: { postId: string; onClose: () => void }) {
+  const navigate = useNavigate()
   const { posts, trendingPostsList, addComment, addReplyToComment, togglePostLike } = useApp()
   const [commentText, setCommentText] = useState('')
   const [replyTarget, setReplyTarget] = useState<{ commentId: string; author: string } | null>(null)
@@ -152,10 +284,14 @@ function PostModal({ postId, onClose }: { postId: string; onClose: () => void })
         {/* Right: Details */}
         <div className="flex w-[45%] flex-col">
           {/* Header */}
-          <div className="flex items-center gap-3 border-b border-white/10 p-5">
-            <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${post.avatarGradient}`} />
+          <div 
+            onClick={() => navigate(`/profile/${encodeURIComponent(post.author)}`)}
+            className="group flex cursor-pointer items-center gap-3 border-b border-white/10 p-5 transition hover:bg-white/5"
+            title={`Visit ${post.author}'s profile`}
+          >
+            <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${post.avatarGradient} transition group-hover:scale-105`} />
             <div>
-              <p className="text-[14px] font-semibold text-white">{post.author}</p>
+              <p className="text-[14px] font-semibold text-white transition group-hover:text-[#4ADE80]">{post.author}</p>
               <div className="flex gap-2">
                 {post.tags.map(t => (
                   <span key={t} className="text-[11px] text-[#4ADE80]">{t}</span>
@@ -232,10 +368,12 @@ function PostModal({ postId, onClose }: { postId: string; onClose: () => void })
 
 // ==================== Post Card ====================
 function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
+  const navigate = useNavigate() // Make sure this hook is INSIDE the component
   const { togglePostLike } = useApp()
   const [showHeart, setShowHeart] = useState(false)
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (!post.liked) {
       togglePostLike(post.id)
       setShowHeart(true)
@@ -246,7 +384,7 @@ function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
   return (
     <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
       className="glass group cursor-pointer overflow-hidden rounded-2xl transition-all hover:bg-white/10"
-      onClick={onClick} onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClick() }}>
+      onClick={onClick} onDoubleClick={handleDoubleClick}>
       <div className="relative">
         <img src={post.image} alt={post.title} className="w-full object-cover" />
         <AnimatePresence>
@@ -265,10 +403,21 @@ function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
           ))}
         </div>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          
+          {/* === Avatar & Name (Click to Navigate) === */}
+          <div 
+            onClick={(e) => {
+              e.stopPropagation() // Prevent opening the post modal
+              navigate(`/profile/${encodeURIComponent(post.author)}`) // Arrow function is CRITICAL here
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-lg p-1 transition hover:bg-white/5"
+            title={`Visit ${post.author}'s profile`}
+          >
             <div className={`h-5 w-5 rounded-full bg-gradient-to-br ${post.avatarGradient}`} />
-            <span className="text-[11px] text-white/50">{post.author}</span>
+            <span className="text-[11px] font-medium text-white/70 transition hover:text-[#4ADE80]">{post.author}</span>
           </div>
+          {/* ========================================= */}
+
           <div className="flex items-center gap-1">
             <Heart className={`h-3.5 w-3.5 ${post.liked ? 'fill-[#F472B6] text-[#F472B6]' : 'text-white/40'}`} />
             <span className="text-[11px] text-white/50">{post.likes >= 1000 ? `${(post.likes/1000).toFixed(1)}k` : post.likes}</span>
@@ -281,6 +430,7 @@ function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
 
 // ==================== Trending Post Card ====================
 function TrendingPostCard({ post, onClick }: { post: Post; onClick: () => void }) {
+  const navigate = useNavigate() // <--- 1. Add this line here
   const { togglePostLike } = useApp()
   const [showHeart, setShowHeart] = useState(false)
 
@@ -318,10 +468,21 @@ function TrendingPostCard({ post, onClick }: { post: Post; onClick: () => void }
           ))}
         </div>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          
+          {/* === 2. Replaced the avatar section here === */}
+          <div 
+            onClick={(e) => {
+              e.stopPropagation() // Prevent bubbling to avoid opening the post modal
+              navigate(`/profile/${encodeURIComponent(post.author)}`)
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-lg p-1 transition hover:bg-white/5"
+            title={`Visit ${post.author}'s profile`}
+          >
             <div className={`h-5 w-5 rounded-full bg-gradient-to-br ${post.avatarGradient}`} />
-            <span className="text-[11px] text-white/50">{post.author}</span>
+            <span className="text-[11px] font-medium text-white/70 transition hover:text-[#4ADE80]">{post.author}</span>
           </div>
+          {/* =========================================== */}
+
           <div className="flex items-center gap-1">
             <Heart className={`h-3.5 w-3.5 ${post.liked ? 'fill-[#F472B6] text-[#F472B6]' : 'text-white/40'}`} />
             <span className="text-[11px] text-white/50">{post.likes >= 1000 ? `${(post.likes/1000).toFixed(1)}k` : post.likes}</span>
@@ -338,6 +499,7 @@ export default function Community() {
   const [tab, setTab] = useState<'recommended' | 'trending'>('recommended')
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   // Bug 7: search state
   const [searchQuery, setSearchQuery] = useState('')
@@ -510,7 +672,9 @@ export default function Community() {
           title="Refresh">
           <RefreshCw className="h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
         </button>
-        <button className="group flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] text-white transition-all duration-200 hover:scale-110 hover:shadow-[0_0_20px_rgba(74,222,128,0.4)]"
+        <button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="group flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] text-white transition-all duration-200 hover:scale-110 hover:shadow-[0_0_20px_rgba(74,222,128,0.4)]"
           title="Share Post">
           <Plus className="h-5 w-5 transition-transform duration-200 group-hover:rotate-90" />
         </button>
@@ -519,6 +683,7 @@ export default function Community() {
       {/* Modal */}
       <AnimatePresence>
         {selectedPostId && <PostModal postId={selectedPostId} onClose={() => setSelectedPostId(null)} />}
+        {isCreateModalOpen && <CreatePostModal onClose={() => setIsCreateModalOpen(false)} />} {/* <--- Add this line */}
       </AnimatePresence>
     </div>
   )

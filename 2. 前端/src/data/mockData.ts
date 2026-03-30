@@ -89,6 +89,7 @@ export interface UserProfile {
   savedRecipes: number
   followers: number
   following: number
+  followingList?: string[]
 }
 
 export interface WeightEntry {
@@ -460,6 +461,7 @@ export const defaultUser: UserProfile = {
   savedRecipes: 24,
   followers: 236,
   following: 189,
+  followingList: [],
 }
 
 export const weightHistory: WeightEntry[] = Array.from({ length: 30 }, (_, i) => ({
