@@ -1,17 +1,21 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { Pencil, Check, User, Shield, ArrowRightLeft, LogOut } from 'lucide-react'
+import { Pencil, Check, User, Shield, ArrowRightLeft, LogOut, Heart } from 'lucide-react' // Added Heart icon
 import { useApp } from '../context/AppContext'
 import { weightHistory } from '../data/mockData'
 
 export default function Profile() {
-  const { user, updateWeight, unit, setUnit, signOut } = useApp()
+  // 1. Extract `posts` from AppContext
+  const { user, posts, updateWeight, unit, setUnit, signOut } = useApp()
   const navigate = useNavigate()
   const [editingWeight, setEditingWeight] = useState(false)
   const [tempWeight, setTempWeight] = useState(user.weight)
   const [privacyGoal, setPrivacyGoal] = useState(true)
   const [privacyRecipe, setPrivacyRecipe] = useState(false)
+
+  // 2. Filter posts to only show the ones created by the current user
+  const myPosts = posts.filter(post => post.author === user.name)
 
   const saveWeight = () => {
     updateWeight(tempWeight)
@@ -25,7 +29,8 @@ export default function Profile() {
   const bmiLabel = user.bmi < 18.5 ? 'Underweight' : user.bmi < 25 ? 'Normal' : user.bmi < 30 ? 'Overweight' : 'Obese'
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl space-y-6">
+      {/* Top Section: Two Columns */}
       <div className="flex gap-6">
         {/* Left Column */}
         <div className="flex-1 space-y-5">
@@ -184,7 +189,7 @@ export default function Profile() {
             <h2 className="mb-4 text-[16px] font-bold text-white">Social Summary</h2>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Posts', value: user.posts, color: '#4ADE80' },
+                { label: 'Posts', value: myPosts.length, color: '#4ADE80' }, // Updated to use dynamic post count
                 { label: 'Total Likes', value: user.totalLikes, color: '#F472B6' },
                 { label: 'Saved', value: user.savedRecipes, color: '#FBBF24' },
               ].map((s) => (
@@ -230,6 +235,38 @@ export default function Profile() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 3. Bottom Section: My Published Posts */}
+      <div className="glass rounded-2xl p-6">
+        <h2 className="mb-4 text-[18px] font-bold text-white">My Published Posts</h2>
+        {myPosts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10">
+            <p className="text-[14px] text-white/40">You haven't published any posts yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
+            {myPosts.map(post => (
+              <div key={post.id} className="group overflow-hidden rounded-2xl bg-white/5 transition-all hover:bg-white/10 ring-1 ring-white/10">
+                <div className="relative h-40">
+                  <img src={post.image} alt={post.title} className="h-full w-full object-cover" />
+                </div>
+                <div className="p-4">
+                  <p className="mb-2 line-clamp-2 text-[13px] font-semibold leading-snug text-white">{post.title}</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Heart className={`h-3.5 w-3.5 ${post.liked ? 'fill-[#F472B6] text-[#F472B6]' : 'text-white/40'}`} />
+                      <span className="text-[11px] text-white/50">{post.likes}</span>
+                    </div>
+                    {post.tags.length > 0 && (
+                      <span className="rounded-full bg-[#4ADE80]/10 px-2 py-0.5 text-[10px] text-[#4ADE80]">{post.tags[0]}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
