@@ -73,6 +73,8 @@ interface AppContextType {
   isToday: boolean
   isLoggedIn: boolean
   // Community state
+  addPost: (post: Post) => void; // <--- new
+  addComment: (postId: string, comment: Comment) => void
   posts: Post[]
   trendingPostsList: Post[]
   setUser: (u: UserProfile) => void
@@ -354,6 +356,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [selectedYear, selectedMonth, selectedDate, updateDailyRecord])
 
+// Add: Create a new post
+  const addPost = useCallback((post: Post) => {
+    setPostsState(prev => {
+      // Insert the new post at the beginning of the list
+      const updated = [post, ...prev]
+      saveState('mydiet_posts', updated)
+      return updated
+    })
+  }, [])
+
   // Bug 6: prepend new comment so it appears at the top
   const addComment = useCallback((postId: string, comment: Comment) => {
     setPostsState(prev => {
@@ -550,6 +562,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser, updateWeight, toggleMealCheck, incrementStreak,
       completePlan, resetPlan, setUnit, setSelectedDate, setFullDate, resetToToday,
       addNutrition, swapMeal, selectMealAlternative, addExtraMeals, removeExtraMeal, removeAllExtraMeals,
+      addPost,
       addComment, deleteComment, addReplyToComment, updatePostComments, refreshPosts, togglePostLike,
       signIn, signUp, signOut,
     }}>
