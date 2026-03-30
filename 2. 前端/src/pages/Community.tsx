@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, MessageCircle, Send, X, Search, RefreshCw, Plus, TrendingUp, Clock, Trophy, Trash2, CornerDownRight } from 'lucide-react'
 import { trendingTags, topContributors, type Post, type Comment } from '../data/mockData'
 import { useApp } from '../context/AppContext'
+import { useNavigate } from 'react-router-dom' // New import
 
 // ==================== Nested Comment Item (Bug 6: 楼中楼) ====================
 function CommentItem({ comment, postId, depth = 0, onReplyTo }: {
@@ -350,8 +351,8 @@ function PostModal({ postId, onClose }: { postId: string; onClose: () => void })
 
 // ==================== Post Card ====================
 function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
+  const navigate = useNavigate() // Inside PostCard component, first get navigate
   const { togglePostLike } = useApp()
-  const [showHeart, setShowHeart] = useState(false)
 
   const handleDoubleClick = () => {
     if (!post.liked) {
@@ -399,6 +400,7 @@ function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
 
 // ==================== Trending Post Card ====================
 function TrendingPostCard({ post, onClick }: { post: Post; onClick: () => void }) {
+  const navigate = useNavigate() // <--- 1. Add this line here
   const { togglePostLike } = useApp()
   const [showHeart, setShowHeart] = useState(false)
 
@@ -436,10 +438,21 @@ function TrendingPostCard({ post, onClick }: { post: Post; onClick: () => void }
           ))}
         </div>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          
+          {/* === 2. Replaced the avatar section here === */}
+          <div 
+            onClick={(e) => {
+              e.stopPropagation() // Prevent bubbling to avoid opening the post modal
+              navigate(`/profile/${encodeURIComponent(post.author)}`)
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-lg p-1 transition hover:bg-white/5"
+            title={`Visit ${post.author}'s profile`}
+          >
             <div className={`h-5 w-5 rounded-full bg-gradient-to-br ${post.avatarGradient}`} />
-            <span className="text-[11px] text-white/50">{post.author}</span>
+            <span className="text-[11px] font-medium text-white/70 transition hover:text-[#4ADE80]">{post.author}</span>
           </div>
+          {/* =========================================== */}
+
           <div className="flex items-center gap-1">
             <Heart className={`h-3.5 w-3.5 ${post.liked ? 'fill-[#F472B6] text-[#F472B6]' : 'text-white/40'}`} />
             <span className="text-[11px] text-white/50">{post.likes >= 1000 ? `${(post.likes/1000).toFixed(1)}k` : post.likes}</span>

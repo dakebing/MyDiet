@@ -33,6 +33,7 @@ export default function App() {
         <Route path="/identifier" element={<Identifier />} />
         <Route path="/community" element={<Community />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:username" element={<Profile />} />
       </Route>
 
       {/* Fallback: redirect to landing */}
