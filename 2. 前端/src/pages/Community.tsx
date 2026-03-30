@@ -72,6 +72,93 @@ function CommentItem({ comment, postId, depth = 0, onReplyTo }: {
   )
 }
 
+// ==================== Create Post Modal ====================
+function CreatePostModal({ onClose }: { onClose: () => void }) {
+  const { addPost, user } = useApp()
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [tags, setTags] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+
+  const handleSubmit = () => {
+    if (!title.trim() || !content.trim()) return
+
+    // 处理标签，确保以 # 开头
+    const formattedTags = tags
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean)
+      .map(t => (t.startsWith('#') ? t : `#${t}`))
+
+    const newPost: Post = {
+      id: `new-post-${Date.now()}`,
+      title,
+      content,
+      image: imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop', // 默认占位图
+      author: user.name || 'You',
+      avatarGradient: 'from-[#4ADE80] to-[#22D3EE]',
+      likes: 0,
+      liked: false,
+      tags: formattedTags.length > 0 ? formattedTags : ['#HealthyEating'],
+      comments: []
+    }
+
+    addPost(newPost)
+    onClose()
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-8"
+      onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-[#1a1a2e] shadow-2xl">
+        
+        <div className="border-b border-white/10 p-5">
+          <h3 className="text-[18px] font-bold text-white">Create New Post</h3>
+        </div>
+
+        <div className="space-y-4 p-5">
+          <div>
+            <label className="mb-1.5 block text-[13px] text-white/60">Title</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="What's on your mind?"
+              className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-[13px] text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-[#4ADE80]/50" />
+          </div>
+          
+          <div>
+            <label className="mb-1.5 block text-[13px] text-white/60">Content</label>
+            <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Share your recipe or progress..." rows={4}
+              className="w-full resize-none rounded-xl bg-white/5 px-4 py-2.5 text-[13px] text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-[#4ADE80]/50" />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[13px] text-white/60">Image URL (Optional)</label>
+            <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..."
+              className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-[13px] text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-[#4ADE80]/50" />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[13px] text-white/60">Tags (comma separated)</label>
+            <input value={tags} onChange={e => setTags(e.target.value)} placeholder="Healthy, MealPrep, Keto..."
+              className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-[13px] text-white placeholder-white/30 outline-none ring-1 ring-white/10 focus:ring-[#4ADE80]/50" />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-white/10 p-4">
+          <button onClick={onClose} className="rounded-xl px-4 py-2 text-[13px] text-white/60 transition hover:bg-white/5 hover:text-white">Cancel</button>
+          <button onClick={handleSubmit} disabled={!title.trim() || !content.trim()}
+            className="rounded-xl bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] px-6 py-2 text-[13px] font-bold text-[#1a1a2e] transition hover:opacity-90 disabled:opacity-50">
+            Post
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // ==================== Post Modal (4-2) ====================
 function PostModal({ postId, onClose }: { postId: string; onClose: () => void }) {
   const { posts, trendingPostsList, addComment, addReplyToComment, togglePostLike } = useApp()
@@ -338,6 +425,7 @@ export default function Community() {
   const [tab, setTab] = useState<'recommended' | 'trending'>('recommended')
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   // Bug 7: search state
   const [searchQuery, setSearchQuery] = useState('')
@@ -510,7 +598,9 @@ export default function Community() {
           title="Refresh">
           <RefreshCw className="h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
         </button>
-        <button className="group flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] text-white transition-all duration-200 hover:scale-110 hover:shadow-[0_0_20px_rgba(74,222,128,0.4)]"
+        <button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="group flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] text-white transition-all duration-200 hover:scale-110 hover:shadow-[0_0_20px_rgba(74,222,128,0.4)]"
           title="Share Post">
           <Plus className="h-5 w-5 transition-transform duration-200 group-hover:rotate-90" />
         </button>
@@ -519,6 +609,7 @@ export default function Community() {
       {/* Modal */}
       <AnimatePresence>
         {selectedPostId && <PostModal postId={selectedPostId} onClose={() => setSelectedPostId(null)} />}
+        {isCreateModalOpen && <CreatePostModal onClose={() => setIsCreateModalOpen(false)} />} {/* <--- Add this line */}
       </AnimatePresence>
     </div>
   )
