@@ -12,6 +12,7 @@ function CommentItem({ comment, postId, depth = 0, onReplyTo }: {
   depth?: number
   onReplyTo: (commentId: string, author: string) => void
 }) {
+  const navigate = useNavigate()
   const { deleteComment, updatePostComments, posts, trendingPostsList } = useApp()
   const [liked, setLiked] = useState(false)
   const displayLikes = liked ? comment.likes + 1 : comment.likes
@@ -28,10 +29,21 @@ function CommentItem({ comment, postId, depth = 0, onReplyTo }: {
   return (
     <div className={`${depth > 0 ? 'ml-6 border-l border-white/10 pl-4' : ''}`}>
       <div className="flex gap-3 py-2">
-        <div className={`h-7 w-7 shrink-0 rounded-full bg-gradient-to-br ${comment.avatarGradient}`} />
+        {/* Clickable Avatar */}
+        <div 
+          onClick={() => navigate(`/profile/${encodeURIComponent(comment.author)}`)}
+          className={`h-7 w-7 shrink-0 cursor-pointer rounded-full bg-gradient-to-br ${comment.avatarGradient} transition hover:opacity-80`} 
+          title={`Visit ${comment.author}'s profile`}
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold text-white">{comment.author}</span>
+            {/* Clickable Name */}
+            <span 
+              onClick={() => navigate(`/profile/${encodeURIComponent(comment.author)}`)}
+              className="cursor-pointer text-[13px] font-semibold text-white transition hover:text-[#4ADE80]"
+            >
+              {comment.author}
+            </span>
             <span className="text-[11px] text-white/30">{comment.time}</span>
             {isOwn && (
               <button onClick={handleDelete}
@@ -193,6 +205,7 @@ function CreatePostModal({ onClose }: { onClose: () => void }) {
 
 // ==================== Post Modal (4-2) ====================
 function PostModal({ postId, onClose }: { postId: string; onClose: () => void }) {
+  const navigate = useNavigate()
   const { posts, trendingPostsList, addComment, addReplyToComment, togglePostLike } = useApp()
   const [commentText, setCommentText] = useState('')
   const [replyTarget, setReplyTarget] = useState<{ commentId: string; author: string } | null>(null)
@@ -271,10 +284,14 @@ function PostModal({ postId, onClose }: { postId: string; onClose: () => void })
         {/* Right: Details */}
         <div className="flex w-[45%] flex-col">
           {/* Header */}
-          <div className="flex items-center gap-3 border-b border-white/10 p-5">
-            <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${post.avatarGradient}`} />
+          <div 
+            onClick={() => navigate(`/profile/${encodeURIComponent(post.author)}`)}
+            className="group flex cursor-pointer items-center gap-3 border-b border-white/10 p-5 transition hover:bg-white/5"
+            title={`Visit ${post.author}'s profile`}
+          >
+            <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${post.avatarGradient} transition group-hover:scale-105`} />
             <div>
-              <p className="text-[14px] font-semibold text-white">{post.author}</p>
+              <p className="text-[14px] font-semibold text-white transition group-hover:text-[#4ADE80]">{post.author}</p>
               <div className="flex gap-2">
                 {post.tags.map(t => (
                   <span key={t} className="text-[11px] text-[#4ADE80]">{t}</span>

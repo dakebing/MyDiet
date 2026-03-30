@@ -8,7 +8,8 @@ import { weightHistory } from '../data/mockData'
 export default function Profile() {
   // Get parameters from URL
   const { username } = useParams<{ username?: string }>() 
-  const { user: currentUser, posts, updateWeight, unit, setUnit, signOut } = useApp()
+  // Extract toggleFollow from useApp
+  const { user: currentUser, posts, updateWeight, unit, setUnit, signOut, toggleFollow } = useApp()
   const navigate = useNavigate()
 
   // Check if this is the current logged-in user's profile 
@@ -29,6 +30,9 @@ export default function Profile() {
     totalLikes: profilePosts.reduce((sum, p) => sum + p.likes, 0),
     posts: profilePosts.length,
   }
+
+  // Check if the current user is following the profile owner
+  const isFollowing = currentUser.followingList?.includes(displayUser.name!)
 
   const [editingWeight, setEditingWeight] = useState(false)
   const [tempWeight, setTempWeight] = useState(currentUser.weight)
@@ -90,8 +94,15 @@ export default function Profile() {
             )}
             {/* Follow button for other users */}
             {!isCurrentUser && (
-              <button className="rounded-xl bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] px-6 py-2.5 text-[14px] font-bold text-[#1a1a2e] transition hover:opacity-90">
-                Follow
+              <button 
+                onClick={() => toggleFollow(displayUser.name!)}
+                className={`rounded-xl px-6 py-2.5 text-[14px] font-bold transition ${
+                  isFollowing 
+                    ? 'bg-white/10 text-white hover:bg-white/20 ring-1 ring-white/20' // Style for 'Following'
+                    : 'bg-gradient-to-r from-[#4ADE80] to-[#22D3EE] text-[#1a1a2e] hover:opacity-90' // Style for 'Follow'
+                }`}
+              >
+                {isFollowing ? 'Following' : 'Follow'}
               </button>
             )}
           </div>
@@ -255,6 +266,33 @@ export default function Profile() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Following List - ONLY FOR CURRENT USER */}
+          {isCurrentUser && (
+            <div className="glass rounded-2xl p-6">
+              <h2 className="mb-4 text-[16px] font-bold text-white">Following ({currentUser.followingList?.length || 0})</h2>
+              
+              {(!currentUser.followingList || currentUser.followingList.length === 0) ? (
+                <p className="text-[13px] text-white/40">You are not following anyone yet.</p>
+              ) : (
+                <div className="flex max-h-[200px] flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
+                  {currentUser.followingList.map(name => (
+                    <div 
+                      key={name}
+                      onClick={() => navigate(`/profile/${encodeURIComponent(name)}`)}
+                      className="flex cursor-pointer items-center gap-3 rounded-xl bg-white/5 p-3 transition hover:bg-white/10"
+                    >
+                      {/* Placeholder avatar for the followed user */}
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FBBF24] to-[#F97316]">
+                        <User className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="truncate text-[13px] font-medium text-white/80 transition hover:text-[#4ADE80]">{name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

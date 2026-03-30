@@ -73,8 +73,6 @@ interface AppContextType {
   isToday: boolean
   isLoggedIn: boolean
   // Community state
-  addPost: (post: Post) => void; // <--- new
-  addComment: (postId: string, comment: Comment) => void
   posts: Post[]
   trendingPostsList: Post[]
   setUser: (u: UserProfile) => void
@@ -96,6 +94,9 @@ interface AppContextType {
   removeExtraMeal: (mealId: string) => void
   removeAllExtraMeals: () => void
   // Community
+  toggleFollow: (username: string) => void; 
+  addPost: (post: Post) => void; 
+  addComment: (postId: string, comment: Comment) => void
   addComment: (postId: string, comment: Comment) => void
   deleteComment: (postId: string, commentId: string) => void
   addReplyToComment: (postId: string, commentId: string, reply: Comment) => void
@@ -366,6 +367,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // Add: Toggle follow status for a user
+  const toggleFollow = useCallback((targetUsername: string) => {
+    setUserState(prev => {
+      const currentList = prev.followingList || []
+      const isFollowing = currentList.includes(targetUsername)
+      
+      // If already following, remove them; otherwise, add them to the list
+      const newList = isFollowing
+        ? currentList.filter(name => name !== targetUsername)
+        : [...currentList, targetUsername]
+
+      const updated = {
+        ...prev,
+        followingList: newList,
+        following: newList.length // Sync the following count
+      }
+      saveState('mydiet_user', updated)
+      return updated
+    })
+  }, [])
+
   // Bug 6: prepend new comment so it appears at the top
   const addComment = useCallback((postId: string, comment: Comment) => {
     setPostsState(prev => {
@@ -557,6 +579,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       completePlan, resetPlan, setUnit, setSelectedDate, setFullDate, resetToToday,
       addNutrition, swapMeal, selectMealAlternative, addExtraMeals, removeExtraMeal, removeAllExtraMeals,
       addPost,
+      toggleFollow,
       addComment, deleteComment, addReplyToComment, updatePostComments, refreshPosts, togglePostLike,
       signIn, signUp, signOut,
     }}>
