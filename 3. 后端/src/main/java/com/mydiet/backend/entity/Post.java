@@ -1,5 +1,7 @@
 package com.mydiet.backend.entity;
 
+import java.util.List;
+
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -26,8 +28,12 @@ public class Post {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "image_url")
+// Use LONGTEXT to allow storing very long Base64 image strings from the frontend
+    @Column(name = "image_url", columnDefinition = "LONGTEXT")
     private String imageUrl;
+
+    @Column(columnDefinition = "INT DEFAULT 0")
+    private Integer likes = 0;
 
     // JSON fields can be mapped as Strings in Java for simplicity,
     // or mapped to custom objects. We use String here for an easy start.
@@ -39,4 +45,9 @@ public class Post {
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    // A temporary pocket to hold comments when sending data to the frontend.
+    // @Transient means "do not try to find this column in the MySQL database".
+    @Transient
+    private List<Comment> comments;
 }
