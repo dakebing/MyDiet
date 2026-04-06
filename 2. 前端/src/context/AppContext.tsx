@@ -787,18 +787,7 @@ const toggleCommentLike = useCallback(async (postId: string, commentId: string) 
       return { success: false, message: 'Backend connection failed' }
     }
   }, [])
-    setPlanCompleted(false)
-    saveState('mydiet_plan_done', false)
-    setPlan(weeklyPlan)
-    saveState('mydiet_plan', weeklyPlan)
-    setUnitState('metric')
-    saveState('mydiet_unit', 'metric')
 
-    localStorage.setItem('mydiet_logged_in', 'true')
-    localStorage.setItem('mydiet_user_email', normalizedEmail)
-    setIsLoggedIn(true)
-    return { success: true }
-  }, [])
 
   // Sign out — clear session but keep data in localStorage for sign-back-in
   const signOut = useCallback(() => {
