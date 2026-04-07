@@ -9,6 +9,7 @@ import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -19,42 +20,47 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User registerUser(UserRegisterDTO registerDto) {
+
         // 1. Check if email already exists
-        User existingUser = userRepository.findByEmail(registerDto.getEmail());
-        if (existingUser != null) {
+        Optional<User> existingUser = userRepository.findByEmail(registerDto.getEmail());
+        if (existingUser.isPresent()) {
             throw new RuntimeException("Email is already registered.");
         }
 
-        // 2. Hash the password using jBCrypt
+        // 2. Hash password
         String hashedPassword = BCrypt.hashpw(registerDto.getPassword(), BCrypt.gensalt());
 
-        // 3. Create new user entity and save
+        // 3. Create user
         User user = new User();
-        user.setUsername(registerDto.getUsername() != null ? registerDto.getUsername() : "User_" + UUID.randomUUID().toString().substring(0, 8));
+        user.setUsername(
+            registerDto.getUsername() != null
+                ? registerDto.getUsername()
+                : "User_" + UUID.randomUUID().toString().substring(0, 8)
+        );
         user.setEmail(registerDto.getEmail());
         user.setPassword(hashedPassword);
-        
-        // Generate a random UID as it's required by the existing User entity rules
-        user.setUid(UUID.randomUUID().toString());
+        user.setProvider("local"); // 很重要，加这个
 
         return userRepository.save(user);
     }
 
     @Override
     public User loginUser(UserLoginDTO loginDto) {
-        // 1. Find user by email
-        User user = userRepository.findByEmail(loginDto.getEmail());
-        if (user == null) {
+
+        // 1. Find user
+        Optional<User> optionalUser = userRepository.findByEmail(loginDto.getEmail());
+        if (optionalUser.isEmpty()) {
             throw new RuntimeException("User not found.");
         }
 
-        // 2. Check password matches
-        boolean passwordMatches = BCrypt.checkpw(loginDto.getPassword(), user.getPassword());
-        if (!passwordMatches) {
+        User user = optionalUser.get();
+
+        // 2. Check password
+        boolean match = BCrypt.checkpw(loginDto.getPassword(), user.getPassword());
+        if (!match) {
             throw new RuntimeException("Invalid password.");
         }
 
-        // 3. Return user
         return user;
     }
 }
