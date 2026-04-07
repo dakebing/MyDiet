@@ -161,11 +161,18 @@ const handleSignIn = async (e: React.FormEvent) => {
               </div>
 
               {/* Social Buttons */}
-              <div className="flex gap-3">
-                <button className="flex h-11 flex-1 items-center justify-center gap-2.5 rounded-xl border border-white/10 bg-white/5 transition hover:bg-white/10">
-                  <span className="text-[16px] font-bold text-white">G</span>
-                  <span className="text-[14px] font-medium text-white/80">Google</span>
-                </button>
+<div className="flex gap-3">
+  <button
+    onClick={() => {
+      console.log("Google login clicked");
+      window.location.href = "http://localhost:8080/oauth2/authorization/google";
+    }}
+    className="flex h-11 flex-1 items-center justify-center gap-2.5 rounded-xl border border-white/10 bg-white/5 transition hover:bg-white/10"
+  >
+    <span className="text-[16px] font-bold text-white">G</span>
+    <span className="text-[14px] font-medium text-white/80">Google</span>
+  </button>
+  
                 <button className="flex h-11 flex-1 items-center justify-center gap-2.5 rounded-xl border border-white/10 bg-white/5 transition hover:bg-white/10">
                   <span className="text-[18px] font-bold text-white"></span>
                   <span className="text-[14px] font-medium text-white/80">Apple</span>
