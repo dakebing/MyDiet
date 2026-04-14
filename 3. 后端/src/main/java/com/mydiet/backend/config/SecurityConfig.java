@@ -2,7 +2,6 @@ package com.mydiet.backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -18,12 +17,16 @@ public class SecurityConfig {
                                 "/",
                                 "/error",
                                 "/auth/**",
+                                "/api/users/**",
+                                "/api/posts/**",
+                                "/api/recipes/**",
+                                "/api/dietary-references/**",
+                                "/api/meal-plan/**",
                                 "/oauth2/**",
                                 "/login/**"
                         ).permitAll()
                         .anyRequest().authenticated()
-                )
-                .oauth2Login(Customizer.withDefaults());
+                );
 
         return http.build();
     }
