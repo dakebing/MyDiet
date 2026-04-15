@@ -32,13 +32,17 @@ public class SecurityConfig {
                                 "/",
                                 "/error",
                                 "/auth/**",
+                                "/api/users/**",
+                                "/api/posts/**",
+                                "/api/recipes/**",
+                                "/api/dietary-references/**",
+                                "/api/meal-plan/**",
                                 "/oauth2/**",
                                 "/login/**",
                                 "/api/**" // CRITICAL PATCH: Allow all community data endpoints!
                         ).permitAll()
                         .anyRequest().authenticated()
-                )
-                .oauth2Login(Customizer.withDefaults());
+                );
 
         return http.build();
     }
